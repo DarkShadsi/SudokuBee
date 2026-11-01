@@ -1185,10 +1185,6 @@ public class SudokuBee extends Thread{
 			generation.changeMode(2);
 		});
 
-		generation.load.addActionListener(_ -> {
-			generation.changeMode(3);
-		});
-
 		generation.genSlider.addChangeListener(_ -> {
 			generation.setSliderValue();
 		});
