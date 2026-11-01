@@ -450,122 +450,152 @@ public class SudokuBee extends Thread{
 		});
 	}
 
-	public void run() {
-		while (true) {
-			try {
-				solve.decompose();
-				solve = null;
-			} catch (Exception e) {
-			}
+    public void run() {
+        while (true) {
+            try {
+                solve.decompose();
+                solve = null;
+            } catch (Exception e) {
+            }
 
-			game.setVisible(1);
+            game.setVisible(1);
 
-			if (gameMode) {
-				status.setVisible(false);
-				PrintResult printer = new PrintResult("results/.xls");
-				int sudoku[][][] = board.getSudokuArray();
-				ABC abc = new ABC(printer, sudoku, numEmp, numOnlook, numCycle, selectedPenaltyType);
-				Animation animate = new Animation(sudoku, GP.special);
-				board.decompose();
-				board = null;
-				GP.setVisible(-2);
-				abc.start();
-				delay(100);
-				while (!abc.isDone()) {
-					delay(100);
-					animate.changePic(abc.getBestSolution());
-				}
-				animate.decompose();
-				animate = null;
-				if (generate) {
-					int[][][] masterSolution = abc.getBestSolution();
-					for (int[][] ints : masterSolution) {
-						for (int[] anInt : ints)
-							System.out.printf("%3d ", anInt[0]);
-						System.out.println();
-					}
-					GenerateSudoku gen = new GenerateSudoku(masterSolution, generationPercentage);
-					board(gen.getSudoku(), false);
-					gen = null;
-					isSolved = false;
-					abc = null;
-				} else {
-					if (abc.getFitness() == 1) {
-						exit(8);
-						board = new UIBoard(abc.getBestSolution(), GP.panel[5]);
-					} else {
-						board(abc.getBestSolution(), false);
-						isSolved = false;
-					}
-					abc = null;
-				}
-				printer.close();
-				printer.delete();
-				printer = null;
-				status.setVisible(true);
-			} else {
-				SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
-				String cycleLogFile = "results/result_" + dateFormat.format(new Date()) + ".xls";
-				PrintResult cyclePrinter = new PrintResult(cycleLogFile);
-				ExperimentLogger summaryLogger = new ExperimentLogger();
+            if (gameMode) {
+                status.setVisible(false);
+                PrintResult printer = new
+                        PrintResult("results/.xls");
+                int sudoku[][][] =
+                        board.getSudokuArray();
+                ABC abc = new ABC(printer, sudoku,
+                        numEmp, numOnlook, numCycle, selectedPenaltyType);
+                Animation animate = new Animation(sudoku,
+                        GP.special);
+                board.decompose();
+                board = null;
 
-				status.setVisible(false);
+                GP.panel[5].setVisible(false);
+                GP.special.setVisible(true);
 
-				int[][][] initialPuzzle = board.getSudokuArray();
+                abc.start();
+                delay(100);
+                while (!abc.isDone()) {
+                    delay(100);
 
-				summaryLogger.logInitialState(initialPuzzle, selectedPenaltyType, numEmp, numOnlook, numCycle);
+                    animate.changePic(abc.getBestSolution());
+                }
+                animate.decompose();
+                animate = null;
+                if (generate) {
+                    int[][][] masterSolution =
+                            abc.getBestSolution();
+                    for (int[][] ints :
+                            masterSolution) {
+                        for (int[] anInt : ints)
 
-				ABC abc = new ABC(cyclePrinter, initialPuzzle, numEmp, numOnlook, numCycle, selectedPenaltyType);
+                            System.out.printf("%3d ", anInt[0]);
+                        System.out.println();
+                    }
+                    GenerateSudoku gen = new
+                            GenerateSudoku(masterSolution, generationPercentage);
+                    board(gen.getSudoku(), false);
+                    gen = null;
+                    isSolved = false;
+                    abc = null;
+                } else {
+                    if (abc.getFitness() == 1) {
+                        exit(8);
+                        board = new
+                                UIBoard(abc.getBestSolution(), GP.panel[5]);
+                    } else {
 
-				double startTime = cyclePrinter.getTime();
-				abc.start();
+                        board(abc.getBestSolution(), false);
+                        isSolved = false;
+                    }
+                    abc = null;
+                }
+                printer.close();
+                printer.delete();
+                printer = null;
+                status.setVisible(true);
+            } else {
+                SimpleDateFormat dateFormat = new
+                        SimpleDateFormat("yyyyMMdd_HHmmss");
+                String cycleLogFile = "results/result_" +
+                        dateFormat.format(new Date()) + ".xls";
+                PrintResult cyclePrinter = new
+                        PrintResult(cycleLogFile);
+                ExperimentLogger summaryLogger = new
+                        ExperimentLogger();
 
-				try {
-					abc.join();
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					System.err.println("Experiment thread was interrupted.");
-				}
+                status.setVisible(false);
 
-				double endTime = cyclePrinter.getTime();
-				double seconds = ((endTime - startTime) / 1000);
+                int[][][] initialPuzzle =
+                        board.getSudokuArray();
 
-				summaryLogger.logFinalResult(abc.getBestSolution(), abc.getFitness(), Integer.parseInt(abc.getCycles()),
-						seconds);
 
-				cyclePrinter.close();
-				summaryLogger.close();
+                summaryLogger.logInitialState(initialPuzzle, selectedPenaltyType, numEmp,
+                        numOnlook, numCycle);
 
-				game.setVisible(0);
-				GP.setVisible(5);
-				board.decompose();
-				board = null;
+                ABC abc = new ABC(cyclePrinter,
+                        initialPuzzle, numEmp, numOnlook, numCycle, selectedPenaltyType);
 
-				if (abc.getFitness() == 1) {
-					exit(8);
-					board = new UIBoard(abc.getBestSolution(), GP.panel[5]);
-					isSolved = true;
-				} else {
-					board(abc.getBestSolution(), false);
-					isSolved = false;
-				}
-				abc.decompose();
-				abc = null;
-				status.setVisible(true);
+                double startTime =
+                        cyclePrinter.getTime();
+                abc.start();
 
-				try {
-					Desktop.getDesktop().open(new File(summaryLogger.getFilename()));
-				} catch (Exception ee) {
-					System.err.println("Could not open experiment log file automatically.");
-				}
-			}
-			game.setVisible(0);
-			start = false;
-			while (!start)
-				delay(50);
-			;
-		}
-	}
+                try {
+                    abc.join();
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread().interrupt();
+                    System.err.println("Experiment thread was interrupted.");
+                }
+
+                double endTime = cyclePrinter.getTime();
+                double seconds = ((endTime - startTime) /
+                        1000);
+
+
+                summaryLogger.logFinalResult(abc.getBestSolution(), abc.getFitness(),
+                        Integer.parseInt(abc.getCycles()),
+                        seconds);
+
+                cyclePrinter.close();
+                summaryLogger.close();
+
+                game.setVisible(0);
+                GP.setVisible(5);
+                board.decompose();
+                board = null;
+
+                if (abc.getFitness() == 1) {
+                    exit(8);
+                    board = new
+                            UIBoard(abc.getBestSolution(), GP.panel[5]);
+                    isSolved = true;
+                } else {
+                    board(abc.getBestSolution(),
+                            false);
+                    isSolved = false;
+                }
+                abc.decompose();
+                abc = null;
+                status.setVisible(true);
+
+                try {
+                    Desktop.getDesktop().open(new
+                            File(summaryLogger.getFilename()));
+                } catch (Exception ee) {
+                    System.err.println("Could not open experiment log file automatically.");
+                }
+            }
+            game.setVisible(0);
+            start = false;
+            while (!start)
+                delay(50);
+            ;
+        }
+    }
 	
 	protected void delay(int newDelay){
 		try{
