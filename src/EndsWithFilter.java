@@ -6,14 +6,15 @@ public final class EndsWithFilter implements FilenameFilter{
 	private final String endsWith;
 	public EndsWithFilter( String endsWith ){
         this.endsWith = endsWith.toLowerCase();
-        }
+    }
+
     public boolean accept( File dir, String name ){
         File f = new File( dir, name );
         if ( f.isDirectory() ){
             return false;
             }
         return name.toLowerCase().endsWith( endsWith );
-        }
+    }
 
     public static void main( String[] args )
         {
@@ -25,10 +26,9 @@ public final class EndsWithFilter implements FilenameFilter{
             String[] filenames = new File( "C:\\com\\mindprod\\filter" )
                     .list( f );
 
-            for ( String filename : filenames )
-                {
+            for ( String filename : filenames ){
                 System.out.println( filename );
-                }
             }
         }
     }
+}

@@ -1,4 +1,3 @@
-import java.math.BigInteger;
 import java.util.Random;
 
 class Bee{
@@ -6,220 +5,317 @@ class Bee{
 	private double fitness;
 	private Subgrid[] subgrid;
 	private Random rand = new Random();
-	private PenaltyType penaltyType;
-
-	Bee(Subgrid[] subgrid, PenaltyType penaltyType){
-		this.subgrid=subgrid;
-        this.penaltyType = penaltyType;
-	}
 	
-	Bee(int[][][] prob, Subgrid[] subgrid, PenaltyType penaltyType) {
+	Bee (Subgrid[] subgrid){
+		this.subgrid = subgrid;
+	}
+
+	Bee (int[][][] prob, Subgrid[] subgrid){
 		solution = prob;
 		this.subgrid = subgrid;
-		this.penaltyType = penaltyType;
 
-		for (int ctr = 0; ctr < subgrid.length; ctr++) {
+		for(int ctr = 0; ctr<subgrid.length; ctr++){
 			int[] needed = neededNumbers(subgrid[ctr]);
-			for (int y = subgrid[ctr].getStartY(), indexRand = needed.length,
-					limY = y + subgrid[ctr].getDimY(); y < limY; y++) {
-				for (int x = subgrid[ctr].getStartX(), limX = x + subgrid[ctr].getDimX(); x < limX; x++) {
-					if (solution[y][x][1] == 1) {
+
+			for(int y = subgrid[ctr].getStartY(), indexRand = needed.length, limY = y+subgrid[ctr].getDimY(); y<limY; y++){
+				for(int x = subgrid[ctr].getStartX(), limX = x+subgrid[ctr].getDimX(); x<limX; x++){
+					if(solution[y][x][1] == 1){
 						int tmp = rand.nextInt(indexRand);
 						solution[y][x][0] = needed[tmp];
-						needed[tmp] = needed[indexRand - 1];
-						needed[indexRand - 1] = solution[y][x][0];
-						indexRand = indexRand - 1;
+						needed[tmp] = needed[indexRand-1];
+						needed[indexRand-1] = solution[y][x][0];
+						indexRand = indexRand-1;
 					}
 				}
 			}
 		}
 	}
-	
-	protected PenaltyType getPenaltyType() {
-		return this.penaltyType;
+
+	protected void perturb(int numSwaps) {
+		int n = solution.length;
+		for (int i = 0; i < numSwaps; i++) {
+			int subgridNum = rand.nextInt(subgrid.length);
+			Subgrid g = subgrid[subgridNum];
+
+			int y1 = g.getStartY() + rand.nextInt(g.getDimY());
+			int x1 = g.getStartX() + rand.nextInt(g.getDimX());
+			int y2 = g.getStartY() + rand.nextInt(g.getDimY());
+			int x2 = g.getStartX() + rand.nextInt(g.getDimX());
+
+			if (solution[y1][x1][1] == 1 && solution[y2][x2][1] == 1) {
+				int temp = solution[y1][x1][0];
+				solution[y1][x1][0] = solution[y2][x2][0];
+				solution[y2][x2][0] = temp;
+			}
+		}
 	}
 
-	protected int getPenaltyValue() {
-        switch (this.penaltyType) {
-            case SUM_PRODUCT_CONSTRAINED:
-                return getPenaltySumProduct(false);
-            case SUM_PRODUCT_UNCONSTRAINED:
-                return getPenaltySumProduct(true);
-            case ROW_COLUMN_CONFLICTS:
-            default:
-                return getPenaltyRowColumnConflicts();
-        }
-    }
-	
-	private int getPenaltyRowColumnConflicts() {
-		int penalty = 0;
-		customSet hor = new customSet();
-		customSet ver = new customSet();
 
-		for (int ctr = 0; ctr < solution.length; ctr++) {
-			hor.clear();
-			ver.clear();
-			for (int ct = 0; ct < solution.length; ct++) {
-				if (hor.contains(solution[ctr][ct][0]))
-					penalty++;
-				else
-					hor.add(Integer.valueOf(solution[ctr][ct][0]));
 
-				if (ver.contains(solution[ct][ctr][0]))
-					penalty++;
-				else
-					ver.add(solution[ct][ctr][0]);
-			}
-		}
-		return penalty;
-	}
-	
-	private int getPenaltySumProduct(boolean checkSubgrids) {
-        int size = solution.length;
-        if (size == 0) return 0;
-
-		BigInteger totalPenalty = BigInteger.ZERO;
-		int idealSum = size * (size + 1) / 2;
-		BigInteger idealProduct = BigInteger.ONE;
-
-		for (int i = 2; i <= size; i++) idealProduct = idealProduct.multiply(BigInteger.valueOf(i));
-
-		for (int i = 0; i < size; i++) {
-			int rowSum = 0;
-			int colSum = 0;
-			BigInteger rowProd = BigInteger.ONE;
-			BigInteger colProd = BigInteger.ONE;
-
-			for (int j = 0; j < size; j++) {
-				rowSum += solution[i][j][0];
-				colSum += solution[j][i][0];
-				rowProd = rowProd.multiply(BigInteger.valueOf(solution[i][j][0]));
-				colProd = colProd.multiply(BigInteger.valueOf(solution[j][i][0]));
-			}
-
-			totalPenalty = totalPenalty.add(BigInteger.valueOf(rowSum - idealSum)).add(BigInteger.valueOf(colSum - idealSum)).add(rowProd.subtract(idealProduct)).add(colProd.subtract(idealProduct));
-		}
-
-		if (checkSubgrids) {
-			for (Subgrid grid : subgrid) {
-				int subgridSum = 0;
-				BigInteger subgridProd = BigInteger.ONE;
-				boolean hasZero = false;
-
-				for (int y = grid.getStartY(); y < grid.getStartY() + grid.getDimY(); y++) {
-					for (int x = grid.getStartX(); x < grid.getStartX() + grid.getDimX(); x++) {
-						int value = solution[y][x][0];
-						if (value == 0) {
-							hasZero = true;
-							break;
-						}
-						subgridSum += value;
-						subgridProd = subgridProd.multiply(BigInteger.valueOf(value));
-					}
-					if (hasZero) break;
-				}
-
-				if (!hasZero) {
-					totalPenalty = totalPenalty.add(BigInteger.valueOf(subgridSum - idealSum)).add(subgridProd.subtract(idealProduct));
-				}
-			}
-		}
-		
-		return totalPenalty.abs().intValue();
-    }
-
-	protected void copyProblem(int[][][] prob) {
+	protected void copyProblem(int[][][] prob){
 		solution = prob;
 	}
-	
-	protected void printResult() {
-		for (int ctr = 0; ctr < solution.length; ctr++) {
-			for (int ctr1 = 0; ctr1 < solution[ctr].length; ctr1++) {
-				System.out.print(solution[ctr][ctr1][0] + "");
+
+	protected void printResult(){
+		for(int ctr = 0; ctr<solution.length; ctr++){
+			for(int ctr1 = 0; ctr1<solution[ctr].length; ctr1++){
+				System.out.print(solution[ctr][ctr1][0]+"");
 			}
 			System.out.println("");
 		}
 	}
 
-	/* protected int getPenaltyValue() {
-		int penalty=0;
-		customSet hor=new customSet();
-		customSet ver=new customSet();
+	protected double getPenaltyValue(int fp){
+		if (fp == 0) {
+			return getFunctionPenalty_MissingWithSubgrid();
+		} else if (fp == 1) {
+			return getFunctionPenalty_SumProductWithSubgrid();
+		} else {
+			return getFunctionPenalty_SumProductWithoutSubgrid();
+		}
+	}
 
-        for (int ctr=0; ctr<solution.length; ctr++) {
-			hor.clear();
-			ver.clear();
-			for(int ct=0; ct<solution.length; ct++){
-				if(hor.contains(solution[ctr][ct][0])) penalty++;
-				else hor.add(Integer.valueOf(solution[ctr][ct][0]));
+	private int getFunctionPenalty_MissingWithSubgrid() {
+		int penalty = 0;
+		int n = solution.length;
+		
+		int subSize = (int) Math.sqrt(n);
+		customSet set = new customSet();
 
-                if(ver.contains(solution[ct][ctr][0])) penalty++;
-				else ver.add(solution[ct][ctr][0]);
-            }
-        }
-        return penalty;
-    } */
+		for(int r = 0; r < n; r++){
+			set.clear(); // clear the set of row
+			for(int c = 0; c < n; c++){
+				set.add((solution[r][c][0]));
+			}
+			penalty += (n - set.size());
+		}
+
+		for(int c = 0; c < n; c++){
+			set.clear(); // clear the set of columns
+			for(int r = 0; r < n; r++){
+				set.add((solution[r][c][0]));
+			}
+			penalty += (n - set.size());
+		}
+
+		// check for subgrids
+		 for (int sr = 0; sr < n; sr += subSize) {
+			for (int sc = 0; sc < n; sc += subSize) {
+				set.clear();
+				for (int r = sr; r < sr + subSize; r++)
+					for (int c = sc; c < sc + subSize; c++)
+						set.add(solution[r][c][0]);
+				penalty += (n - set.size());
+			}
+		}
+
+		return penalty;
+	}
+	
+	private double getFunctionPenalty_SumProductWithSubgrid() {
+		return 
+		getRowProductSumPenalty() +
+		getColumnProductSumPenalty() + 
+		getSubgridProductSumPenalty();
+	}
+
+	private double getFunctionPenalty_SumProductWithoutSubgrid() {
+		return 
+		getRowProductSumPenalty() +
+		getColumnProductSumPenalty();
+	}
+
+	private double getRowProductSumPenalty() {
+		int n = solution.length;
+		double penalty = 0;
+
+		// e.g. for a 4x4 grid, expectedSum = 1 + 2 + 3 + 4 = 10
+		// which is 4 * (4 + 1) / 2.0 = 4 * (5) / 2.0 = 20/2.0 = 10 
+		double expectedSum = n * (n + 1) / 2.0;
+		
+		// e.g. for a 4x4 grid, expectedProduct = 1 * 2 * 3 * 4 = 24
+		double expectedProduct = 1.0;
+		for(int i = 1; i <= n; i++) expectedProduct *= i;
+		expectedProduct = Math.log1p(expectedProduct);
+
+		// get the product and sum penalty for rows
+		for(int r = 0; r < n; r++) {
+			double sum = 0, product = 1, rowPenalty = 0;
+			boolean[] seen = new boolean[n+1];
+			for(int c = 0; c < n; c++) {
+				int val = solution[r][c][0];
+				sum += val;
+				product *= val;
+				
+				if (val > 0 && val <= n) {
+					if (seen[val]) {
+						rowPenalty += 5;  // <-- should trigger for duplicates
+					} else {
+						seen[val] = true;
+					}
+				}
+			}
+			
+			rowPenalty += Math.abs(sum - expectedSum);
+        	rowPenalty += Math.abs(Math.log1p(product) - expectedProduct);
+			penalty += rowPenalty;
+		}
+		//System.out.println("total row penalty = " + penalty);
+		Math.nextUp(penalty); // forces computation (prevents lazy eval or skipping)
+    	return penalty;
+	}
+
+	private double getColumnProductSumPenalty() {
+		int n = solution.length;
+		double penalty = 0;
+
+		double expectedSum = n * (n + 1) / 2.0;
+		double expectedProduct = 1.0;
+		for(int i = 1; i <= n; i++) expectedProduct *= i;
+		expectedProduct = Math.log1p(expectedProduct);
+
+		// get the product and sum penalty for cols
+		for(int c = 0; c < n; c++) {
+			double sum = 0, product = 1, colPenalty = 0;
+			boolean[] seen = new boolean[n+1];
+			for(int r = 0; r < n; r++) {
+				int val = solution[r][c][0];
+				sum += val;
+				product *= val;
+				
+				if (val > 0 && val <= n) {
+					if (seen[val]) {
+						colPenalty += 5;  // <-- should trigger for duplicates
+					} else {
+						seen[val] = true;
+					}
+				}
+			}
+			colPenalty += Math.abs(sum - expectedSum);
+        	colPenalty += Math.abs(Math.log1p(product) - expectedProduct);
+			penalty += colPenalty;
+		}
+		//System.out.println("total column penalty = " + penalty);
+		Math.nextUp(penalty); // forces computation (prevents lazy eval or skipping)
+    	return penalty;
+	}
+
+	private double getSubgridProductSumPenalty() {
+		int n = solution.length;
+		int subSize = (int) Math.sqrt(n);
+		//System.out.println("Subsize = " + subSize);
+
+		double penalty = 0;
+		double expectedSum = n * (n + 1) / 2.0;
+		double expectedProduct = 1.0;
+		for(int i = 1; i <= n; i++) expectedProduct *= i;
+		expectedProduct = Math.log1p(expectedProduct);
+
+		// get the product and sum penalty for sub-grids
+		for (int sr = 0; sr < n; sr += subSize) {
+			for (int sc = 0; sc < n; sc += subSize) {
+				boolean[] seen = new boolean[n+1];
+				double sum = 0, product = 1;
+				double subgridPenalty = 0;
+
+				//System.out.print("Subgrid (" + sr + "," + sc + "): ");
+				for (int r = sr; r < sr + subSize; r++)
+					for (int c = sc; c < sc + subSize; c++) {
+						int val = solution[r][c][0];
+						//System.out.println("value = " + val);
+						sum += val;
+						product *= (val == 0 ? 1 : val); // treat 0 as neutral for product
+
+						// 🧠 Penalize empties and duplicates properly
+						if (val <= 0 || val > n) {
+							subgridPenalty += 2; // invalid or missing value
+						} else if (seen[val]) {
+							subgridPenalty += 5; // duplicate detected
+						} else {
+							seen[val] = true;
+						}
+
+					}
+
+				subgridPenalty += Math.abs(sum - expectedSum);
+				//System.out.println("sum = " + sum + ", expectedSum = " + expectedSum + ", penalty = " + subgridPenalty);
+        		subgridPenalty += Math.abs(Math.log1p(product) - expectedProduct);
+				//System.out.println("product = " + Math.log1p(product) + ", expectedProduct = " + expectedProduct + ", penalty = " + subgridPenalty);
+				//System.out.println("Subgrid (" + sr + "," + sc + ") penalty = " + subgridPenalty);
+				penalty += subgridPenalty;
+			}
+		}
+		//System.out.println("total subgrid penalty = " + penalty);
+		Math.nextUp(penalty); // forces computation (prevents lazy eval or skipping)
+		return penalty;
+	}
 
 	protected int[][][] getSolution(){
 		return solution;
-		}
+	}
+
 	protected void setFitness(double fit){
-		fitness=fit;
-		}
+		fitness = fit;
+	}
+
 	protected double getFitness(){
 		return fitness;
-		}
+	}
+
 	protected int getElement(int j){
-		int row=j/solution.length, column=j%solution.length;
-		if(solution[row][column][1]==0)
+		int row = j/solution.length, column=j%solution.length;
+		if(solution[row][column][1] == 0)
 			return 0;
 		return solution[row][column][0];
-		}
-	protected int[] neededNumbers(Subgrid grid){
-		int[] needed=new int[solution.length];
-		int removed=0;
-		for(int ctr=1; ctr<=solution.length; ctr++)
-			needed[ctr-1]=ctr;
-		for(int y=grid.getStartY(), limY=y+grid.getDimY(); y<limY; y++){
-			for(int x=grid.getStartX(), limX=x+grid.getDimX(); x<limX; x++){
-				if(solution[y][x][1]==0){
-					needed[solution[y][x][0]-1]=0;
-					removed=removed+1;
-					}
-				}
-			}
-		int[] neededNum=new int[solution.length-removed];
-		for(int ctr=0, ctr2=0; ctr<solution.length; ctr++){
-			if(needed[ctr]>0){
-				neededNum[ctr2]=needed[ctr];
-				ctr2=ctr2+1;
-				}
-			}
-		return neededNum;
-		}
-	protected int[][][] getCopy(){
-		int[][][] copy=new int[solution.length][solution.length][2];
-		for(int ctr=0; ctr<copy.length; ctr++){
-			for(int ct=0; ct<copy.length; ct++){
-				copy[ctr][ct][0]=solution[ctr][ct][0];
-				copy[ct][ctr][0]=solution[ct][ctr][0];
-				copy[ctr][ct][1]=solution[ctr][ct][1];
-				copy[ct][ctr][1]=solution[ct][ctr][1];
-				}
-			}
-		return copy;
-		}
-	protected int[][][] swap(int[][][] solution, int subgridNum, int row, int column, int xij, int vij){
-		this.solution=solution;
-		for(int y=subgrid[subgridNum].getStartY(), limY=y+subgrid[subgridNum].getDimY(); y<limY; y++){
-			for(int x=subgrid[subgridNum].getStartX(), limX=x+subgrid[subgridNum].getDimX(); x<limX; x++){
-				if(solution[y][x][0]==vij){
-					solution[y][x][0]=xij;
-					solution[row][column][0]=vij;
-					return solution;
-					}
-				}
-			}
-		return null;
-		}
 	}
+	
+	protected int[] neededNumbers(Subgrid grid){
+		int[] needed = new int[solution.length];
+		int removed = 0;
+		for(int ctr = 1; ctr <= solution.length; ctr++)
+			needed[ctr-1] = ctr;
+		for(int y = grid.getStartY(), limY = y+grid.getDimY(); y<limY; y++){
+			for(int x = grid.getStartX(), limX = x+grid.getDimX(); x<limX; x++){
+				if(solution[y][x][1] == 0){
+					needed[solution[y][x][0]-1] = 0;
+					removed = removed+1;
+				}
+			}
+		}
+		int[] neededNum = new int[solution.length-removed];
+		for(int ctr = 0, ctr2 = 0; ctr<solution.length; ctr++){
+			if(needed[ctr]>0){
+				neededNum[ctr2] = needed[ctr];
+				ctr2 = ctr2+1;
+			}
+		}
+		return neededNum;
+	}
+
+	protected int[][][] getCopy(){
+		int[][][] copy = new int[solution.length][solution.length][2];
+		for(int ctr = 0; ctr<copy.length; ctr++){
+			for(int ct = 0; ct<copy.length; ct++){
+				copy[ctr][ct][0] = solution[ctr][ct][0];
+				copy[ct][ctr][0] = solution[ct][ctr][0];
+				copy[ctr][ct][1] = solution[ctr][ct][1];
+				copy[ct][ctr][1] = solution[ct][ctr][1];
+			}
+		}
+		return copy;
+	}
+
+	protected int[][][] swap(int[][][] solution, int subgridNum, int row, int column, int xij, int vij){
+		this.solution = solution;
+		for(int y = subgrid[subgridNum].getStartY(), limY = y+subgrid[subgridNum].getDimY(); y<limY; y++){
+			for(int x = subgrid[subgridNum].getStartX(), limX = x+subgrid[subgridNum].getDimX(); x<limX; x++){
+				if(solution[y][x][0] == vij){
+					solution[y][x][0] = xij;
+					solution[row][column][0] = vij;
+					return solution;
+				}
+			}
+		}
+		return null;
+	}
+}

@@ -1,68 +1,91 @@
+import java.util.HashSet;
 import java.util.Random;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
 
 class GenerateSudoku{
 	private int[][][] sudoku;
-	private Random rand = new Random();
+	private Random rand=new Random();
 
-	GenerateSudoku(int[][][] solvedSudoku, int percentageOfGivens) {
-		int size = solvedSudoku.length;
-		this.sudoku = new int[size][size][2];
+	private int n, totalCells, numGiven, numEmpty;
 
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                this.sudoku[r][c][0] = 0;
-                this.sudoku[r][c][1] = 1;
-            }
-        }
+	GenerateSudoku(int[][][] sudoku, int percentOfGivenCells, int chosenGrid){
+		sop("Entered Generate sudoku");
+		this.sudoku=sudoku;
+		this.n = sudoku.length;
+		this.totalCells = n * n;
+		this.numGiven = (int) Math.round(totalCells * (percentOfGivenCells / 100.0));
+		this.numEmpty = totalCells - numGiven;
 
-		int numGivens = (int) Math.round((size * size) * (percentageOfGivens / 100.0));
+		if(chosenGrid == 1) {
+			sop("Creating from empty grid");
+			generateFromEmpty();
+			return;
+		} 
 
-        List<int[]> cellCoords = new ArrayList<>();
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                cellCoords.add(new int[]{r, c});
-            }
-        }
-
-        Collections.shuffle(cellCoords, rand);
-
-        for (int i = 0; i < numGivens && i < cellCoords.size(); i++) {
-            int[] coord = cellCoords.get(i);
-            int row = coord[0];
-            int col = coord[1];
-
-            this.sudoku[row][col][0] = solvedSudoku[row][col][0];
-            this.sudoku[row][col][1] = 0;
-        }
+		sop("Creating from filled grid");
+		generateFromFilled();
 	}
 
-    public static void addRandomGivens(int[][][] partialBoard, int[][][] solvedBoard, int numToAdd) {
-        int size = partialBoard.length;
-        List<int[]> emptyCells = new ArrayList<>();
+	private void generateFromEmpty() {
+		// Randomly select which cells to KEEP (given cells)
+        HashSet<Integer> emptyIndices = new HashSet<>();
+        while (emptyIndices.size() < numEmpty) {
+            emptyIndices.add(rand.nextInt(totalCells)); // pick a random cell index
+        }
+
+		// mark chosen cells as empty
+        for (int index : emptyIndices) {
+            int row = index / n;
+            int col = index % n;
+
+            sudoku[row][col][0] = 0;
+            sudoku[row][col][1] = 1;
+        }
+
+		// mark the rest as given
+		for(int ctr=0; ctr<n; ctr++){
+			for(int ct=0; ct<n; ct++){
+				if(sudoku[ctr][ct][0] != 0 && sudoku[ctr][ct][1] == 1) {
+					sudoku[ctr][ct][1] = 0;
+				}
+			}
+		}
+	}
+
+	private void generateFromFilled() {
+        // remove cells for empty
+        HashSet<Integer> emptyIndices = new HashSet<>();
+		sop("numEmpty = " + numEmpty + ", emptIndices.size() = " + emptyIndices.size());
         
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
-                if (partialBoard[r][c][0] == 0) {
-                    emptyCells.add(new int[]{r, c});
-                }
+		while (emptyIndices.size() < numEmpty) {
+			sop("entered while loop inside GenerateSudoku");
+            int row = rand.nextInt(n);
+            int col = rand.nextInt(n);
+			sop("grid value[0] = " + sudoku[row][col][0]);
+			sop("grid value[1] = " + sudoku[row][col][1]);
+			
+            if (sudoku[row][col][0] != 0 && sudoku[row][col][1] == 1) {
+				sop("adding empty to grid["+row+"]["+col+"][0]");
+                sudoku[row][col][0] = 0;
+                sudoku[row][col][1] = 1;
+                emptyIndices.add(row * n + col);
             }
         }
 
-        Collections.shuffle(emptyCells);
-
-        for (int i = 0; i < numToAdd && i < emptyCells.size(); i++) {
-            int[] coord = emptyCells.get(i);
-            int row = coord[0];
-            int col = coord[1];
-            partialBoard[row][col][0] = solvedBoard[row][col][0];
-            partialBoard[row][col][1] = 0;
-        }
-    }
+		// mark the rest as given
+		for(int ctr=0; ctr<n; ctr++){
+			for(int ct=0; ct<n; ct++){
+				if(sudoku[ctr][ct][0] != 0 && sudoku[ctr][ct][1] == 1) {
+					sudoku[ctr][ct][1] = 0;
+				}
+			}
+		}
+	}
 
 	protected int[][][] getSudoku(){
 		return sudoku;
+	}
+
+	private void sop(Object obj){
+		System.out.println(obj+"");
 	}
 }
