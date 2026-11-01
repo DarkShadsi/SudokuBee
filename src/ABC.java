@@ -144,9 +144,6 @@ class ABC extends Thread{
 		filename = filename + (runNumber-1) + ".txt";
 		writeResultsToFile(filename);
 
-		try {
-			Desktop.getDesktop().open(new File(filename));
-		} catch (IOException e) {}
 	}
 
 	protected void writeResultsToFile(String filename) {

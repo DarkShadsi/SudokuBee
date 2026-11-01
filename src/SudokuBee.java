@@ -606,12 +606,14 @@ public class SudokuBee extends Thread{
 				printer.close();
 				printer = null;
 
-				game.setVisible(0);
-				
 				try {
-					Desktop.getDesktop().open(new File(file));
-				} catch (IOException e) {}
-				
+					Desktop.getDesktop().open(new File("results/result.xls"));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+				game.setVisible(0);
+
 				board.decompose();
 				board = null;
 
